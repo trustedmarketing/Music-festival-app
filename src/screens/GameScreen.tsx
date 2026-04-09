@@ -1,0 +1,319 @@
+import React, { useState, useRef } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, FlatList,
+  Animated, Platform,
+} from 'react-native';
+import { GradientBackground } from '../components/GradientBackground';
+import { BudgetTracker } from '../components/BudgetTracker';
+import { ArtistCard } from '../components/ArtistCard';
+import { useGame } from '../context/GameContext';
+import { Artist } from '../data/artists';
+import { colors, fontSize, spacing, borderRadius } from '../utils/theme';
+
+export function GameScreen() {
+  const { state, dispatch } = useGame();
+  const [filterPrice, setFilterPrice] = useState<number | null>(null);
+  const scrollRef = useRef<FlatList>(null);
+
+  const currentRoundStart = state.roundSelections.flat().length;
+  const currentRoundSelections = state.selectedArtists.slice(currentRoundStart);
+  const currentRoundSpend = currentRoundSelections.reduce((s, a) => s + a.price, 0);
+
+  const filteredArtists = filterPrice
+    ? state.availableArtists.filter(a => a.price === filterPrice)
+    : state.availableArtists;
+
+  // Group artists by price tier
+  const priceTiers = [5, 4, 3, 2, 1];
+
+  const handleSelectArtist = (artist: Artist) => {
+    if (state.selectedArtists.find(a => a.id === artist.id)) {
+      dispatch({ type: 'DESELECT_ARTIST', artistId: artist.id });
+    } else {
+      dispatch({ type: 'SELECT_ARTIST', artist });
+    }
+  };
+
+  const handleConfirmRound = () => {
+    dispatch({ type: 'CONFIRM_ROUND' });
+  };
+
+  const renderArtist = ({ item }: { item: Artist }) => {
+    const isSelected = state.selectedArtists.some(a => a.id === item.id);
+    const isAffordable = state.remainingBudget >= item.price;
+    const isSurprise = item.isSurprise;
+
+    return (
+      <ArtistCard
+        artist={item}
+        isSelected={isSelected}
+        isAffordable={isAffordable}
+        isSurprise={isSurprise}
+        onPress={() => handleSelectArtist(item)}
+      />
+    );
+  };
+
+  const renderHeader = () => (
+    <View>
+      <BudgetTracker
+        total={state.totalBudget}
+        remaining={state.remainingBudget}
+        currentRound={state.currentRound}
+        totalRounds={5}
+      />
+
+      {/* Current Round Selections Summary */}
+      {currentRoundSelections.length > 0 && (
+        <View style={styles.selectionSummary}>
+          <Text style={styles.selectionTitle}>
+            This round: {currentRoundSelections.length} artist{currentRoundSelections.length !== 1 ? 's' : ''} (${currentRoundSpend})
+          </Text>
+          <View style={styles.selectedChips}>
+            {currentRoundSelections.map(a => (
+              <TouchableOpacity
+                key={a.id}
+                style={styles.selectedChip}
+                onPress={() => dispatch({ type: 'DESELECT_ARTIST', artistId: a.id })}
+              >
+                <Text style={styles.selectedChipText}>
+                  {a.imageEmoji} {a.name} · ${a.price} ✕
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Previously selected artists */}
+      {state.roundSelections.length > 0 && (
+        <View style={styles.previousSelections}>
+          <Text style={styles.previousTitle}>Lineup so far:</Text>
+          <View style={styles.previousChips}>
+            {state.roundSelections.flat().map(a => (
+              <View key={a.id} style={styles.previousChip}>
+                <Text style={styles.previousChipText}>{a.imageEmoji} {a.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* Price filter */}
+      <View style={styles.filterRow}>
+        <Text style={styles.filterLabel}>Filter:</Text>
+        <TouchableOpacity
+          style={[styles.filterChip, !filterPrice && styles.filterChipActive]}
+          onPress={() => setFilterPrice(null)}
+        >
+          <Text style={[styles.filterChipText, !filterPrice && styles.filterChipTextActive]}>All</Text>
+        </TouchableOpacity>
+        {priceTiers.map(price => {
+          const hasArtists = state.availableArtists.some(a => a.price === price);
+          if (!hasArtists) return null;
+          return (
+            <TouchableOpacity
+              key={price}
+              style={[styles.filterChip, filterPrice === price && styles.filterChipActive]}
+              onPress={() => setFilterPrice(filterPrice === price ? null : price)}
+            >
+              <Text style={[styles.filterChipText, filterPrice === price && styles.filterChipTextActive]}>
+                ${price}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <Text style={styles.sectionTitle}>
+        Available Artists — Round {state.currentRound}
+      </Text>
+    </View>
+  );
+
+  return (
+    <GradientBackground>
+      <View style={styles.container}>
+        {/* Festival Name Header */}
+        <View style={styles.header}>
+          <Text style={styles.festivalName}>{state.festivalName}</Text>
+        </View>
+
+        <FlatList
+          ref={scrollRef}
+          data={filteredArtists}
+          keyExtractor={item => item.id}
+          renderItem={renderArtist}
+          ListHeaderComponent={renderHeader}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* Confirm Round Button */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[
+              styles.confirmButton,
+              currentRoundSelections.length === 0 && styles.confirmButtonEmpty,
+            ]}
+            onPress={handleConfirmRound}
+            accessibilityRole="button"
+            accessibilityLabel={
+              state.currentRound >= 5
+                ? 'Finish lineup'
+                : `Confirm round ${state.currentRound} selections`
+            }
+          >
+            <Text style={styles.confirmButtonText}>
+              {state.currentRound >= 5
+                ? `Finish Lineup! (${state.selectedArtists.length} artists)`
+                : currentRoundSelections.length > 0
+                  ? `Lock In Round ${state.currentRound} (${currentRoundSelections.length} picks)`
+                  : `Skip Round ${state.currentRound}`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </GradientBackground>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    alignItems: 'center',
+  },
+  festivalName: {
+    fontSize: fontSize.xl,
+    fontWeight: '900',
+    color: colors.accentLight,
+    textAlign: 'center',
+  },
+  listContent: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: 100,
+  },
+  selectionSummary: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  selectionTitle: {
+    color: colors.accentLight,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  selectedChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  selectedChip: {
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  selectedChipText: {
+    color: colors.accentLight,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+  },
+  previousSelections: {
+    padding: spacing.md,
+    marginVertical: spacing.xs,
+  },
+  previousTitle: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+  },
+  previousChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  previousChip: {
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  previousChipText: {
+    color: colors.primaryLight,
+    fontSize: fontSize.xs,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: spacing.sm,
+    gap: spacing.xs,
+  },
+  filterLabel: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    marginRight: spacing.xs,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryLight,
+  },
+  filterChipText: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  filterChipTextActive: {
+    color: colors.white,
+  },
+  sectionTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSize.lg,
+    fontWeight: '800',
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.md,
+    backgroundColor: 'rgba(13, 13, 43, 0.95)',
+    borderTopWidth: 1,
+    borderTopColor: colors.cardBorder,
+  },
+  confirmButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  confirmButtonEmpty: {
+    backgroundColor: 'rgba(139, 92, 246, 0.4)',
+  },
+  confirmButtonText: {
+    color: colors.white,
+    fontSize: fontSize.md,
+    fontWeight: '800',
+  },
+});
