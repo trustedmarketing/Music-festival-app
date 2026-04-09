@@ -17,7 +17,7 @@ export function GradientBackground({ children, variant = 'default' }: GradientBa
 
   return (
     <LinearGradient
-      colors={gradientColors[variant] as unknown as string[]}
+      colors={[...gradientColors[variant]]}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
