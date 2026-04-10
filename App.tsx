@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GameProvider, useGame } from './src/context/GameContext';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { KaraokeScreen } from './src/screens/KaraokeScreen';
 import { SurpriseRevealScreen } from './src/screens/SurpriseRevealScreen';
@@ -18,6 +19,8 @@ function GameNavigator() {
   switch (state.gamePhase) {
     case 'onboarding':
       return <OnboardingScreen />;
+    case 'home':
+      return <HomeScreen />;
     case 'selection':
       return <GameScreen />;
     case 'karaoke':

@@ -51,38 +51,6 @@ export function GameScreen() {
 
   const renderHeader = () => (
     <View>
-      {/* Quick action bar */}
-      <View style={styles.actionBar}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => dispatch({ type: 'SHOW_VENUE_SELECT' })}
-        >
-          <Text style={styles.actionButtonEmoji}>{state.currentVenue.emoji}</Text>
-          <Text style={styles.actionButtonText}>Venue</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => dispatch({ type: 'START_H2H' })}
-        >
-          <Text style={styles.actionButtonEmoji}>⚔️</Text>
-          <Text style={styles.actionButtonText}>H2H</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => dispatch({ type: 'SHOW_STORE' })}
-        >
-          <Text style={styles.actionButtonEmoji}>💰</Text>
-          <Text style={styles.actionButtonText}>Shop</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => dispatch({ type: 'SHOW_PROFILE' })}
-        >
-          <Text style={styles.actionButtonEmoji}>👤</Text>
-          <Text style={styles.actionButtonText}>Lv.{state.playerStats.level}</Text>
-        </TouchableOpacity>
-      </View>
-
       <BudgetTracker
         total={state.totalBudget}
         remaining={state.remainingBudget}
@@ -153,14 +121,15 @@ export function GameScreen() {
           showsVerticalScrollIndicator={false}
         />
 
-        {/* Confirm Round Button */}
+        {/* Confirm Round Button — must pick at least 1 artist */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={[
               styles.confirmButton,
-              currentRoundSelections.length === 0 && styles.confirmButtonEmpty,
+              currentRoundSelections.length === 0 && styles.confirmButtonDisabled,
             ]}
             onPress={handleConfirmRound}
+            disabled={currentRoundSelections.length === 0}
             accessibilityRole="button"
             accessibilityLabel={
               state.currentRound >= 5
@@ -169,11 +138,11 @@ export function GameScreen() {
             }
           >
             <Text style={styles.confirmButtonText}>
-              {state.currentRound >= 5
-                ? `Finish Lineup! (${state.selectedArtists.length} artists)`
-                : currentRoundSelections.length > 0
-                  ? `Lock In Round ${state.currentRound} (${currentRoundSelections.length} picks)`
-                  : `Skip Round ${state.currentRound}`}
+              {currentRoundSelections.length === 0
+                ? 'Pick at least 1 artist!'
+                : state.currentRound >= 5
+                  ? `Finish Lineup! (${state.selectedArtists.length} artists)`
+                  : `Lock In Round ${state.currentRound} (${currentRoundSelections.length} pick${currentRoundSelections.length !== 1 ? 's' : ''})`}
             </Text>
           </TouchableOpacity>
         </View>
@@ -287,8 +256,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
-  confirmButtonEmpty: {
-    backgroundColor: 'rgba(139, 92, 246, 0.4)',
+  confirmButtonDisabled: {
+    backgroundColor: 'rgba(139, 92, 246, 0.25)',
+    opacity: 0.6,
   },
   confirmButtonText: {
     color: colors.white,

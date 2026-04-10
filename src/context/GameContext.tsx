@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { Artist, ALL_ROUND_ARTISTS, SURPRISE_ARTISTS } from '../data/artists';
+import { Artist, ALL_ROUND_ARTISTS, SURPRISE_ARTISTS, generateAllRounds } from '../data/artists';
 import { Venue, VENUES, getAvailableVenues } from '../data/venues';
 import { getUnlockedLegendaries } from '../data/legendaryArtists';
 
@@ -29,7 +29,7 @@ export interface GameState {
   spotifyArtistNames: string[];
   onboardingComplete: boolean;
   gamePhase:
-    | 'onboarding' | 'selection' | 'karaoke' | 'results'
+    | 'onboarding' | 'home' | 'selection' | 'karaoke' | 'results'
     | 'surprise_reveal' | 'poster' | 'h2h_lobby' | 'h2h_battle'
     | 'h2h_results' | 'venue_select' | 'profile' | 'store';
   festivalName: string;
@@ -47,6 +47,9 @@ export interface GameState {
   opponentName: string;
   opponentVenue: Venue;
 
+  // Randomized rounds for current game
+  gameRounds: Artist[][];
+
   // Social / poster
   posterShared: boolean;
   lastPredictedAttendance: number;
@@ -56,6 +59,7 @@ type GameAction =
   | { type: 'SET_ONBOARDING_COMPLETE'; favoriteGenres: string[]; spotifyArtistNames?: string[]; festivalName: string }
   | { type: 'SELECT_ARTIST'; artist: Artist }
   | { type: 'DESELECT_ARTIST'; artistId: string }
+  | { type: 'START_GAME' }
   | { type: 'CONFIRM_ROUND' }
   | { type: 'FINISH_KARAOKE' }
   | { type: 'ACKNOWLEDGE_SURPRISE' }
@@ -125,6 +129,7 @@ const initialState: GameState = {
   currentVenue: VENUES[0],
   unlockedVenues: [VENUES[0]],
   playerStats: defaultStats,
+  gameRounds: ALL_ROUND_ARTISTS,
   isMultiplayer: false,
   opponentLineup: [],
   opponentName: '',
@@ -180,7 +185,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case 'SET_ONBOARDING_COMPLETE': {
       const budget = getBudgetForLevel(state.playerStats.level);
-      let artists = getPersonalizedArtists(ALL_ROUND_ARTISTS[0], action.favoriteGenres);
+      const freshRounds = generateAllRounds();
+      let artists = getPersonalizedArtists(freshRounds[0], action.favoriteGenres);
       artists = addLegendaryArtists(artists, state.playerStats);
       return {
         ...state,
@@ -188,10 +194,31 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         spotifyArtistNames: action.spotifyArtistNames || [],
         festivalName: action.festivalName,
         onboardingComplete: true,
-        gamePhase: 'selection',
+        gamePhase: 'home',
         totalBudget: budget,
         remainingBudget: budget,
+        gameRounds: freshRounds,
         availableArtists: artists,
+      };
+    }
+
+    case 'START_GAME': {
+      const budget = getBudgetForLevel(state.playerStats.level);
+      const freshRounds = generateAllRounds();
+      let artists = getPersonalizedArtists(freshRounds[0], state.favoriteGenres);
+      artists = addLegendaryArtists(artists, state.playerStats);
+      return {
+        ...state,
+        currentRound: 1,
+        totalBudget: budget,
+        remainingBudget: budget,
+        selectedArtists: [],
+        roundSelections: [],
+        gameRounds: freshRounds,
+        availableArtists: artists,
+        posterShared: false,
+        isMultiplayer: false,
+        gamePhase: 'selection',
       };
     }
 
@@ -255,7 +282,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       }
 
       let nextArtists = nextRound <= TOTAL_ROUNDS
-        ? getPersonalizedArtists(ALL_ROUND_ARTISTS[nextRound - 1], state.favoriteGenres)
+        ? getPersonalizedArtists(state.gameRounds[nextRound - 1] || [], state.favoriteGenres)
         : [];
       nextArtists = addLegendaryArtists(nextArtists, state.playerStats);
 
@@ -284,7 +311,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         };
       }
 
-      let nextArtists = getPersonalizedArtists(ALL_ROUND_ARTISTS[nextRound - 1], state.favoriteGenres);
+      let nextArtists = getPersonalizedArtists(state.gameRounds[nextRound - 1] || [], state.favoriteGenres);
       nextArtists = addLegendaryArtists(nextArtists, state.playerStats);
       return {
         ...state,
@@ -297,7 +324,7 @@ function gameReducer(state: GameState, action: GameAction): GameState {
     case 'ACKNOWLEDGE_SURPRISE': {
       let nextArtists = state.currentRound <= TOTAL_ROUNDS
         ? [
-            ...getPersonalizedArtists(ALL_ROUND_ARTISTS[state.currentRound - 1], state.favoriteGenres),
+            ...getPersonalizedArtists(state.gameRounds[state.currentRound - 1] || [], state.favoriteGenres),
             ...state.revealedSurprises,
           ]
         : [];
@@ -433,26 +460,15 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       };
 
     case 'BACK_TO_MENU': {
-      const budget = getBudgetForLevel(state.playerStats.level);
       return {
         ...state,
-        gamePhase: 'selection',
-        currentRound: 1,
-        totalBudget: budget,
-        remainingBudget: budget,
-        selectedArtists: [],
-        roundSelections: [],
-        availableArtists: addLegendaryArtists(
-          getPersonalizedArtists(ALL_ROUND_ARTISTS[0], state.favoriteGenres),
-          state.playerStats
-        ),
-        posterShared: false,
-        isMultiplayer: false,
+        gamePhase: 'home',
       };
     }
 
     case 'RESET_GAME': {
       const budget = getBudgetForLevel(state.playerStats.level);
+      const freshRounds = generateAllRounds();
       return {
         ...initialState,
         onboardingComplete: state.onboardingComplete,
@@ -463,9 +479,10 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         unlockedVenues: state.unlockedVenues,
         totalBudget: budget,
         remainingBudget: budget,
-        gamePhase: state.onboardingComplete ? 'selection' : 'onboarding',
+        gameRounds: freshRounds,
+        gamePhase: state.onboardingComplete ? 'home' : 'onboarding',
         availableArtists: addLegendaryArtists(
-          getPersonalizedArtists(ALL_ROUND_ARTISTS[0], state.favoriteGenres),
+          getPersonalizedArtists(freshRounds[0], state.favoriteGenres),
           state.playerStats
         ),
       };
