@@ -106,9 +106,16 @@ export function GameScreen() {
   return (
     <GradientBackground>
       <View style={styles.container}>
-        {/* Festival Name Header */}
+        {/* Header with back and festival name */}
         <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.homeButton}
+            onPress={() => dispatch({ type: 'BACK_TO_MENU' })}
+          >
+            <Text style={styles.homeButtonText}>← Home</Text>
+          </TouchableOpacity>
           <Text style={styles.festivalName}>{state.festivalName}</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
         <FlatList
@@ -159,13 +166,29 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.sm,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  homeButton: {
+    paddingVertical: spacing.xs,
+    paddingRight: spacing.sm,
+    minWidth: 70,
+  },
+  homeButtonText: {
+    color: colors.primaryLight,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+  },
+  headerSpacer: {
+    minWidth: 70,
   },
   festivalName: {
-    fontSize: fontSize.xl,
+    fontSize: fontSize.lg,
     fontWeight: '900',
     color: colors.accentLight,
     textAlign: 'center',
+    flex: 1,
   },
   listContent: {
     paddingHorizontal: spacing.md,
@@ -264,28 +287,5 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.md,
     fontWeight: '800',
-  },
-  actionBar: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  actionButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    minWidth: 70,
-  },
-  actionButtonEmoji: {
-    fontSize: 20,
-  },
-  actionButtonText: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    fontWeight: '600',
-    marginTop: 2,
   },
 });

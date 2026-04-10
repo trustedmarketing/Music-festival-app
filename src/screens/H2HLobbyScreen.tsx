@@ -85,7 +85,7 @@ export function H2HLobbyScreen() {
           style={styles.cancelButton}
           onPress={() => dispatch({ type: 'BACK_TO_MENU' })}
         >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
+          <Text style={styles.cancelButtonText}>← Dashboard</Text>
         </TouchableOpacity>
       </View>
     </GradientBackground>

@@ -158,7 +158,7 @@ export function PosterScreen() {
           style={styles.backButton}
           onPress={() => dispatch({ type: 'BACK_TO_MENU' })}
         >
-          <Text style={styles.backButtonText}>Build New Lineup</Text>
+          <Text style={styles.backButtonText}>← Dashboard</Text>
         </TouchableOpacity>
       </ScrollView>
     </GradientBackground>

@@ -242,11 +242,22 @@ export function ResultsScreen() {
             style={styles.primaryButton}
             onPress={() => {
               dispatch({ type: 'SET_PREDICTED_ATTENDANCE', attendance: prediction.totalAttendees });
-              dispatch({ type: 'RESET_GAME' });
+              dispatch({ type: 'START_GAME' });
             }}
             accessibilityRole="button"
           >
             <Text style={styles.primaryButtonText}>Play Again</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.dashboardButton}
+            onPress={() => {
+              dispatch({ type: 'SET_PREDICTED_ATTENDANCE', attendance: prediction.totalAttendees });
+              dispatch({ type: 'BACK_TO_MENU' });
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={styles.dashboardButtonText}>← Dashboard</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -495,5 +506,16 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: spacing.xs,
+  },
+  dashboardButton: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    minWidth: 250,
+    alignItems: 'center',
+  },
+  dashboardButtonText: {
+    color: colors.primaryLight,
+    fontSize: fontSize.md,
+    fontWeight: '700',
   },
 });

@@ -121,7 +121,7 @@ export function ProfileScreen() {
           style={styles.backButton}
           onPress={() => dispatch({ type: 'BACK_TO_MENU' })}
         >
-          <Text style={styles.backButtonText}>Back to Game</Text>
+          <Text style={styles.backButtonText}>← Dashboard</Text>
         </TouchableOpacity>
       </ScrollView>
     </GradientBackground>
