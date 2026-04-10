@@ -1,7 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
-  Animated, Platform,
+  Platform,
 } from 'react-native';
 import { GradientBackground } from '../components/GradientBackground';
 import { BudgetTracker } from '../components/BudgetTracker';
@@ -12,19 +12,14 @@ import { colors, fontSize, spacing, borderRadius } from '../utils/theme';
 
 export function GameScreen() {
   const { state, dispatch } = useGame();
-  const [filterPrice, setFilterPrice] = useState<number | null>(null);
   const scrollRef = useRef<FlatList>(null);
 
   const currentRoundStart = state.roundSelections.flat().length;
   const currentRoundSelections = state.selectedArtists.slice(currentRoundStart);
   const currentRoundSpend = currentRoundSelections.reduce((s, a) => s + a.price, 0);
 
-  const filteredArtists = filterPrice
-    ? state.availableArtists.filter(a => a.price === filterPrice)
-    : state.availableArtists;
-
-  // Group artists by price tier
-  const priceTiers = [5, 4, 3, 2, 1];
+  // Artists are already limited to 5 per round (one at each $1-$5 price)
+  const displayArtists = state.availableArtists;
 
   const handleSelectArtist = (artist: Artist) => {
     if (state.selectedArtists.find(a => a.id === artist.id)) {
@@ -71,6 +66,13 @@ export function GameScreen() {
         >
           <Text style={styles.actionButtonEmoji}>⚔️</Text>
           <Text style={styles.actionButtonText}>H2H</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => dispatch({ type: 'SHOW_STORE' })}
+        >
+          <Text style={styles.actionButtonEmoji}>💰</Text>
+          <Text style={styles.actionButtonText}>Shop</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
@@ -124,34 +126,11 @@ export function GameScreen() {
         </View>
       )}
 
-      {/* Price filter */}
-      <View style={styles.filterRow}>
-        <Text style={styles.filterLabel}>Filter:</Text>
-        <TouchableOpacity
-          style={[styles.filterChip, !filterPrice && styles.filterChipActive]}
-          onPress={() => setFilterPrice(null)}
-        >
-          <Text style={[styles.filterChipText, !filterPrice && styles.filterChipTextActive]}>All</Text>
-        </TouchableOpacity>
-        {priceTiers.map(price => {
-          const hasArtists = state.availableArtists.some(a => a.price === price);
-          if (!hasArtists) return null;
-          return (
-            <TouchableOpacity
-              key={price}
-              style={[styles.filterChip, filterPrice === price && styles.filterChipActive]}
-              onPress={() => setFilterPrice(filterPrice === price ? null : price)}
-            >
-              <Text style={[styles.filterChipText, filterPrice === price && styles.filterChipTextActive]}>
-                ${price}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
       <Text style={styles.sectionTitle}>
-        Available Artists — Round {state.currentRound}
+        Pick Your Artist — Round {state.currentRound}
+      </Text>
+      <Text style={styles.sectionSubtitle}>
+        One option at each price point ($1–$5)
       </Text>
     </View>
   );
@@ -166,7 +145,7 @@ export function GameScreen() {
 
         <FlatList
           ref={scrollRef}
-          data={filteredArtists}
+          data={displayArtists}
           keyExtractor={item => item.id}
           renderItem={renderArtist}
           ListHeaderComponent={renderHeader}
@@ -278,41 +257,16 @@ const styles = StyleSheet.create({
     color: colors.primaryLight,
     fontSize: fontSize.xs,
   },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.sm,
-    gap: spacing.xs,
-  },
-  filterLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.sm,
-    marginRight: spacing.xs,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.cardBorder,
-  },
-  filterChipActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryLight,
-  },
-  filterChipText: {
-    color: colors.textMuted,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
-  filterChipTextActive: {
-    color: colors.white,
-  },
   sectionTitle: {
     color: colors.textPrimary,
     fontSize: fontSize.lg,
     fontWeight: '800',
     marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  sectionSubtitle: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
     marginBottom: spacing.sm,
   },
   footer: {

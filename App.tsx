@@ -10,6 +10,7 @@ import { PosterScreen } from './src/screens/PosterScreen';
 import { H2HLobbyScreen } from './src/screens/H2HLobbyScreen';
 import { VenueSelectScreen } from './src/screens/VenueSelectScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
+import { StoreScreen } from './src/screens/StoreScreen';
 
 function GameNavigator() {
   const { state } = useGame();
@@ -35,6 +36,8 @@ function GameNavigator() {
       return <VenueSelectScreen />;
     case 'profile':
       return <ProfileScreen />;
+    case 'store':
+      return <StoreScreen />;
     default:
       return <OnboardingScreen />;
   }

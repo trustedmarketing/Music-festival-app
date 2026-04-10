@@ -31,7 +31,7 @@ export interface GameState {
   gamePhase:
     | 'onboarding' | 'selection' | 'karaoke' | 'results'
     | 'surprise_reveal' | 'poster' | 'h2h_lobby' | 'h2h_battle'
-    | 'h2h_results' | 'venue_select' | 'profile';
+    | 'h2h_results' | 'venue_select' | 'profile' | 'store';
   festivalName: string;
 
   // Venue system
@@ -75,6 +75,9 @@ type GameAction =
   // Profile
   | { type: 'SHOW_PROFILE' }
   | { type: 'BACK_TO_MENU' }
+  // Store
+  | { type: 'SHOW_STORE' }
+  | { type: 'ADD_BUDGET_POINTS'; points: number }
   // Attendance result
   | { type: 'SET_PREDICTED_ATTENDANCE'; attendance: number };
 
@@ -418,6 +421,16 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'SHOW_PROFILE':
       return { ...state, gamePhase: 'profile' };
+
+    case 'SHOW_STORE':
+      return { ...state, gamePhase: 'store' };
+
+    case 'ADD_BUDGET_POINTS':
+      return {
+        ...state,
+        totalBudget: state.totalBudget + action.points,
+        remainingBudget: state.remainingBudget + action.points,
+      };
 
     case 'BACK_TO_MENU': {
       const budget = getBudgetForLevel(state.playerStats.level);
