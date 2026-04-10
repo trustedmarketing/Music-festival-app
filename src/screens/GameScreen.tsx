@@ -56,6 +56,31 @@ export function GameScreen() {
 
   const renderHeader = () => (
     <View>
+      {/* Quick action bar */}
+      <View style={styles.actionBar}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => dispatch({ type: 'SHOW_VENUE_SELECT' })}
+        >
+          <Text style={styles.actionButtonEmoji}>{state.currentVenue.emoji}</Text>
+          <Text style={styles.actionButtonText}>Venue</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => dispatch({ type: 'START_H2H' })}
+        >
+          <Text style={styles.actionButtonEmoji}>⚔️</Text>
+          <Text style={styles.actionButtonText}>H2H</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => dispatch({ type: 'SHOW_PROFILE' })}
+        >
+          <Text style={styles.actionButtonEmoji}>👤</Text>
+          <Text style={styles.actionButtonText}>Lv.{state.playerStats.level}</Text>
+        </TouchableOpacity>
+      </View>
+
       <BudgetTracker
         total={state.totalBudget}
         remaining={state.remainingBudget}
@@ -315,5 +340,28 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.md,
     fontWeight: '800',
+  },
+  actionBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  actionButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    minWidth: 70,
+  },
+  actionButtonEmoji: {
+    fontSize: 20,
+  },
+  actionButtonText: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    fontWeight: '600',
+    marginTop: 2,
   },
 });

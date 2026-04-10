@@ -214,10 +214,36 @@ export function ResultsScreen() {
           </View>
         )}
 
+        {/* Level up notification */}
+        {showPrediction && (
+          <View style={styles.levelUpSection}>
+            <Text style={styles.levelUpText}>
+              +{50 + Math.floor(prediction.totalAttendees / 5000)} XP earned!
+            </Text>
+            <Text style={styles.levelUpSubtext}>
+              Level {state.playerStats.level} · Budget: ${state.totalBudget}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.actionButtons}>
           <TouchableOpacity
+            style={styles.posterButton}
+            onPress={() => {
+              dispatch({ type: 'SET_PREDICTED_ATTENDANCE', attendance: prediction.totalAttendees });
+              dispatch({ type: 'SHOW_POSTER' });
+            }}
+            accessibilityRole="button"
+          >
+            <Text style={styles.primaryButtonText}>📤 Create Festival Poster</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.primaryButton}
-            onPress={() => dispatch({ type: 'RESET_GAME' })}
+            onPress={() => {
+              dispatch({ type: 'SET_PREDICTED_ATTENDANCE', attendance: prediction.totalAttendees });
+              dispatch({ type: 'RESET_GAME' });
+            }}
             accessibilityRole="button"
           >
             <Text style={styles.primaryButtonText}>Play Again</Text>
@@ -444,5 +470,30 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.lg,
     fontWeight: '800',
+  },
+  posterButton: {
+    backgroundColor: '#1DA1F2',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    minWidth: 250,
+    alignItems: 'center',
+  },
+  levelUpSection: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderRadius: borderRadius.md,
+  },
+  levelUpText: {
+    fontSize: fontSize.lg,
+    fontWeight: '800',
+    color: colors.primaryLight,
+  },
+  levelUpSubtext: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
 });
