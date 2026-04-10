@@ -31,14 +31,7 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "expo-av",
-        {
-          "microphonePermission": "Allow Festival Lineup Builder to access your microphone for karaoke."
-        }
-      ]
-    ],
+    "plugins": [],
     "extra": {
       "supportsTV": true
     },

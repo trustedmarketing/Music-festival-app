@@ -11,29 +11,19 @@ import { colors, fontSize, spacing, borderRadius } from '../utils/theme';
 export function KaraokeScreen() {
   const { state, dispatch } = useGame();
   const [isPlaying, setIsPlaying] = useState(false);
-  const [lyricIndex, setLyricIndex] = useState(0);
-  const bounceAnim = useRef(new Animated.Value(1)).current;
+  const [progress, setProgress] = useState(0);
+  const [showLyrics, setShowLyrics] = useState(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Get the highest-priced artist from the last round
-  const lastRound = state.roundSelections[state.roundSelections.length - 1] || [];
-  const karaokeArtist = lastRound.reduce<Artist | null>(
+  // Get the highest-priced artist from the last round's selections
+  const lastRoundIndex = state.roundSelections.length - 1;
+  const lastRoundPicks = state.roundSelections[lastRoundIndex] || [];
+  const karaokeArtist = lastRoundPicks.reduce<Artist | null>(
     (highest, artist) => (!highest || artist.price > highest.price ? artist : highest),
     null
   );
-
-  // Simulated lyrics for karaoke display
-  const sampleLyrics = [
-    'Get ready to sing...',
-    `Now playing: "${karaokeArtist?.karaokeSong || 'Hit Song'}"`,
-    'La la la la la...',
-    'Sing your heart out!',
-    'You\'re a star!',
-    'Keep going...',
-    'Almost there...',
-    'What a performance!',
-  ];
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -44,60 +34,73 @@ export function KaraokeScreen() {
   }, []);
 
   useEffect(() => {
-    if (!isPlaying) return;
+    if (isPlaying) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
 
-    // Bounce animation for the mic
-    const bounce = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounceAnim, {
-          toValue: 1.2,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(bounceAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    bounce.start();
+      progressRef.current = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 100) {
+            if (progressRef.current) clearInterval(progressRef.current);
+            setIsPlaying(false);
+            return 100;
+          }
+          return prev + 2;
+        });
+      }, 200);
 
-    // Progress bar
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 8000,
-      useNativeDriver: false,
-    }).start();
-
-    // Cycle through lyrics
-    const interval = setInterval(() => {
-      setLyricIndex(prev => {
-        if (prev >= sampleLyrics.length - 1) {
-          clearInterval(interval);
-          setIsPlaying(false);
-          return prev;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-
-    return () => {
-      clearInterval(interval);
-      bounce.stop();
-    };
+      return () => {
+        if (progressRef.current) clearInterval(progressRef.current);
+      };
+    } else {
+      pulseAnim.setValue(1);
+    }
   }, [isPlaying]);
+
+  const handleStartKaraoke = () => {
+    setIsPlaying(true);
+    setShowLyrics(true);
+    setProgress(0);
+  };
+
+  const handleSkip = () => {
+    if (progressRef.current) clearInterval(progressRef.current);
+    dispatch({ type: 'FINISH_KARAOKE' });
+  };
+
+  const getLyricLine = (): string => {
+    if (!karaokeArtist?.karaokeSong) return '';
+    const lines = [
+      `Now performing: "${karaokeArtist.karaokeSong}"`,
+      '...',
+      'Sing your heart out!',
+      `You're a natural ${karaokeArtist.genre} star!`,
+      'The crowd goes wild!',
+      'Amazing performance!',
+    ];
+    const index = Math.min(Math.floor(progress / 18), lines.length - 1);
+    return lines[index];
+  };
 
   if (!karaokeArtist) {
     return (
       <GradientBackground variant="karaoke">
         <View style={styles.container}>
-          <Text style={styles.skipText}>No artists selected this round</Text>
-          <TouchableOpacity
-            style={styles.skipButton}
-            onPress={() => dispatch({ type: 'FINISH_KARAOKE' })}
-          >
-            <Text style={styles.skipButtonText}>Continue</Text>
+          <Text style={styles.skipMessage}>No artists picked this round!</Text>
+          <TouchableOpacity style={styles.continueButton} onPress={handleSkip}>
+            <Text style={styles.continueButtonText}>Continue</Text>
           </TouchableOpacity>
         </View>
       </GradientBackground>
@@ -107,104 +110,103 @@ export function KaraokeScreen() {
   return (
     <GradientBackground variant="karaoke">
       <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerLabel}>KARAOKE TIME</Text>
+          <Text style={styles.karaokeLabel}>KARAOKE TIME</Text>
           <Text style={styles.roundInfo}>
             Between Round {state.currentRound} & {state.currentRound + 1}
           </Text>
         </View>
 
-        {/* Artist info */}
         <View style={styles.artistSection}>
-          <Animated.Text
-            style={[styles.artistEmoji, { transform: [{ scale: bounceAnim }] }]}
-          >
-            {karaokeArtist.imageEmoji}
-          </Animated.Text>
-          <Text style={styles.artistName}>{karaokeArtist.name}</Text>
-          <Text style={styles.songName}>
-            "{karaokeArtist.karaokeSong || 'Greatest Hit'}"
+          <Text style={styles.artistEmoji}>{karaokeArtist.imageEmoji}</Text>
+          <Text style={styles.songTitle}>"{karaokeArtist.karaokeSong}"</Text>
+          <Text style={styles.artistName}>by {karaokeArtist.name}</Text>
+          <Text style={styles.priceNote}>
+            Your ${karaokeArtist.price} pick — the highest this round!
           </Text>
         </View>
 
-        {/* Lyrics display */}
-        <View style={styles.lyricsContainer}>
-          {isPlaying ? (
-            <>
-              <Text style={styles.lyricText}>{sampleLyrics[lyricIndex]}</Text>
-              {/* Karaoke dots */}
-              <View style={styles.dotsContainer}>
-                {sampleLyrics.map((_, i) => (
+        <View style={styles.micSection}>
+          {!isPlaying && progress === 0 ? (
+            <TouchableOpacity
+              style={styles.micButton}
+              onPress={handleStartKaraoke}
+              accessibilityRole="button"
+              accessibilityLabel="Start karaoke"
+            >
+              <Animated.Text style={[styles.micEmoji, { transform: [{ scale: pulseAnim }] }]}>
+                🎤
+              </Animated.Text>
+              <Text style={styles.micLabel}>Tap to Sing!</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.playingSection}>
+              <Animated.Text style={[styles.micEmojiPlaying, { transform: [{ scale: pulseAnim }] }]}>
+                🎤
+              </Animated.Text>
+
+              {showLyrics && (
+                <View style={styles.lyricsContainer}>
+                  <Text style={styles.lyricsText}>{getLyricLine()}</Text>
+                </View>
+              )}
+
+              <View style={styles.visualizer}>
+                {Array.from({ length: 12 }, (_, i) => (
                   <View
                     key={i}
                     style={[
-                      styles.dot,
-                      i <= lyricIndex && styles.dotActive,
-                      i === lyricIndex && styles.dotCurrent,
+                      styles.visualizerBar,
+                      {
+                        height: isPlaying ? 10 + Math.random() * 40 : 10,
+                        backgroundColor: i % 2 === 0 ? colors.karaoke : colors.primaryLight,
+                      },
                     ]}
                   />
                 ))}
               </View>
-            </>
-          ) : lyricIndex >= sampleLyrics.length - 1 ? (
-            <View style={styles.scoreSection}>
-              <Text style={styles.scoreEmoji}>🌟</Text>
-              <Text style={styles.scoreText}>Amazing Performance!</Text>
-              <Text style={styles.scoreSubtext}>
-                The crowd loved your rendition of "{karaokeArtist.karaokeSong}"
-              </Text>
+
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBar}>
+                  <View style={[styles.progressFill, { width: `${progress}%` }]} />
+                </View>
+                <Text style={styles.progressText}>
+                  {progress >= 100 ? 'Encore!' : `${Math.round(progress)}%`}
+                </Text>
+              </View>
             </View>
-          ) : (
-            <Text style={styles.tapToStart}>Tap the mic to start singing!</Text>
           )}
         </View>
 
-        {/* Progress bar during playback */}
-        {isPlaying && (
-          <View style={styles.progressContainer}>
-            <Animated.View
-              style={[
-                styles.progressBar,
-                {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
-                },
-              ]}
-            />
+        {progress >= 100 && (
+          <View style={styles.scoreSection}>
+            <Text style={styles.scoreText}>Standing Ovation!</Text>
+            <Text style={styles.scoreSubtext}>The crowd loved your performance</Text>
           </View>
         )}
 
-        {/* Controls */}
-        <View style={styles.controls}>
-          {!isPlaying && lyricIndex === 0 && (
+        <View style={styles.buttonSection}>
+          {progress >= 100 ? (
             <TouchableOpacity
-              style={styles.micButton}
-              onPress={() => setIsPlaying(true)}
+              style={styles.continueButton}
+              onPress={handleSkip}
               accessibilityRole="button"
-              accessibilityLabel="Start karaoke"
             >
-              <Text style={styles.micEmoji}>🎤</Text>
-              <Text style={styles.micText}>Tap to Sing!</Text>
+              <Text style={styles.continueButtonText}>
+                On to Round {state.currentRound + 1}!
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              accessibilityRole="button"
+            >
+              <Text style={styles.skipButtonText}>
+                {isPlaying ? 'Skip Song' : 'Skip Karaoke'}
+              </Text>
             </TouchableOpacity>
           )}
-
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              isPlaying && styles.continueButtonDimmed,
-            ]}
-            onPress={() => dispatch({ type: 'FINISH_KARAOKE' })}
-            accessibilityRole="button"
-          >
-            <Text style={styles.continueButtonText}>
-              {lyricIndex >= sampleLyrics.length - 1
-                ? 'Continue to Next Round'
-                : 'Skip Karaoke'}
-            </Text>
-          </TouchableOpacity>
         </View>
       </Animated.View>
     </GradientBackground>
@@ -214,23 +216,21 @@ export function KaraokeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
     paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
-  headerLabel: {
+  karaokeLabel: {
     fontSize: fontSize.xxl,
     fontWeight: '900',
     color: colors.karaoke,
     letterSpacing: 3,
     textShadowColor: 'rgba(236, 72, 153, 0.5)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 15,
+    textShadowRadius: 20,
   },
   roundInfo: {
     fontSize: fontSize.sm,
@@ -242,152 +242,145 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   artistEmoji: {
-    fontSize: 80,
-    marginBottom: spacing.md,
-  },
-  artistName: {
-    fontSize: fontSize.xl,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  songName: {
-    fontSize: fontSize.lg,
-    color: colors.karaoke,
-    fontStyle: 'italic',
-    marginTop: spacing.xs,
-  },
-  lyricsContainer: {
-    minHeight: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    width: '100%',
-    maxWidth: 400,
-  },
-  lyricText: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    textAlign: 'center',
-    textShadowColor: 'rgba(236, 72, 153, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: spacing.md,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  dotActive: {
-    backgroundColor: colors.karaoke,
-  },
-  dotCurrent: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: colors.white,
-  },
-  tapToStart: {
-    fontSize: fontSize.lg,
-    color: colors.textSecondary,
-    textAlign: 'center',
-  },
-  scoreSection: {
-    alignItems: 'center',
-  },
-  scoreEmoji: {
-    fontSize: 60,
+    fontSize: 64,
     marginBottom: spacing.sm,
   },
-  scoreText: {
+  songTitle: {
     fontSize: fontSize.xl,
     fontWeight: '800',
-    color: colors.accentLight,
+    color: colors.textPrimary,
+    textAlign: 'center',
   },
-  scoreSubtext: {
+  artistName: {
     fontSize: fontSize.md,
     color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  priceNote: {
+    fontSize: fontSize.sm,
+    color: colors.accentLight,
+    marginTop: spacing.xs,
+  },
+  micSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  micButton: {
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  micEmoji: {
+    fontSize: 100,
+  },
+  micLabel: {
+    fontSize: fontSize.lg,
+    color: colors.karaoke,
+    fontWeight: '700',
+    marginTop: spacing.md,
+  },
+  playingSection: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  micEmojiPlaying: {
+    fontSize: 64,
+    marginBottom: spacing.md,
+  },
+  lyricsContainer: {
+    backgroundColor: 'rgba(236, 72, 153, 0.1)',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginVertical: spacing.md,
+    width: '100%',
+    alignItems: 'center',
+    minHeight: 60,
+    justifyContent: 'center',
+  },
+  lyricsText: {
+    fontSize: fontSize.lg,
+    color: colors.textPrimary,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    fontWeight: '600',
+  },
+  visualizer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    height: 50,
+    gap: 4,
+    marginVertical: spacing.md,
+  },
+  visualizerBar: {
+    width: 8,
+    borderRadius: 4,
+    minHeight: 10,
   },
   progressContainer: {
     width: '100%',
-    maxWidth: 300,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2,
-    marginBottom: spacing.xl,
-    overflow: 'hidden',
+    marginTop: spacing.md,
+    alignItems: 'center',
   },
   progressBar: {
+    width: '100%',
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+  },
+  progressFill: {
     height: '100%',
     backgroundColor: colors.karaoke,
-    borderRadius: 2,
+    borderRadius: borderRadius.full,
   },
-  controls: {
+  progressText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: spacing.xs,
+  },
+  scoreSection: {
     alignItems: 'center',
-    gap: spacing.md,
+    marginBottom: spacing.lg,
   },
-  micButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: colors.karaoke,
-    justifyContent: 'center',
+  scoreText: {
+    fontSize: fontSize.xl,
+    fontWeight: '900',
+    color: colors.accentLight,
+    marginTop: spacing.sm,
+  },
+  scoreSubtext: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  buttonSection: {
+    paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.lg,
     alignItems: 'center',
-    shadowColor: colors.karaoke,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 10,
-    marginBottom: spacing.md,
-  },
-  micEmoji: {
-    fontSize: 36,
-  },
-  micText: {
-    color: colors.white,
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    marginTop: 2,
   },
   continueButton: {
-    backgroundColor: 'rgba(139, 92, 246, 0.6)',
+    backgroundColor: colors.karaoke,
     borderRadius: borderRadius.full,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    minWidth: 220,
+    minWidth: 250,
     alignItems: 'center',
-  },
-  continueButtonDimmed: {
-    opacity: 0.5,
   },
   continueButtonText: {
     color: colors.white,
-    fontSize: fontSize.md,
-    fontWeight: '700',
-  },
-  skipText: {
-    color: colors.textSecondary,
     fontSize: fontSize.lg,
-    marginBottom: spacing.lg,
+    fontWeight: '800',
   },
   skipButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.full,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
   skipButtonText: {
-    color: colors.white,
+    color: colors.textMuted,
     fontSize: fontSize.md,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  skipMessage: {
+    fontSize: fontSize.lg,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });

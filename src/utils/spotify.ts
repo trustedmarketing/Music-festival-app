@@ -1,21 +1,13 @@
 // Spotify integration utility for onboarding personalization
 // Uses Spotify Web API to fetch user's top artists
+// Note: expo-auth-session and expo-web-browser must be installed
+// separately to enable Spotify OAuth: npm install expo-auth-session expo-web-browser
 
-import * as AuthSession from 'expo-auth-session';
-import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
-
-WebBrowser.maybeCompleteAuthSession();
 
 // Spotify API configuration
 // In production, these would come from environment variables
 const SPOTIFY_CLIENT_ID = 'YOUR_SPOTIFY_CLIENT_ID';
-const SPOTIFY_SCOPES = ['user-top-read', 'user-library-read'];
-
-const discovery = {
-  authorizationEndpoint: 'https://accounts.spotify.com/authorize',
-  tokenEndpoint: 'https://accounts.spotify.com/api/token',
-};
 
 export interface SpotifyArtist {
   id: string;
@@ -23,25 +15,6 @@ export interface SpotifyArtist {
   genres: string[];
   popularity: number;
   imageUrl?: string;
-}
-
-export function useSpotifyAuth() {
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'music-festival-app',
-    path: 'spotify-callback',
-  });
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: SPOTIFY_CLIENT_ID,
-      scopes: SPOTIFY_SCOPES,
-      redirectUri,
-      responseType: AuthSession.ResponseType.Token,
-    },
-    discovery
-  );
-
-  return { request, response, promptAsync, redirectUri };
 }
 
 export async function fetchTopArtists(accessToken: string): Promise<SpotifyArtist[]> {
